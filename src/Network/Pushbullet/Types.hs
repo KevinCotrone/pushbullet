@@ -15,12 +15,12 @@ module Network.Pushbullet.Types(
 ) where
 
 import           Control.Applicative
+import           Control.Monad
 import           Data.Aeson
 import           Data.ByteString
 import           Data.Text
 import           Network.Pushbullet.Internal
 import           Network.Wreq
-import Control.Monad
 
 newtype DeviceId = DeviceId { unDeviceId :: Text } deriving (Eq, Show)
 -- | A message to send
@@ -59,7 +59,7 @@ data PushList = PushList {
 } deriving (Eq, Show)
 
 instance ToJSON PushList where
-  toJSON (PushList title items) = object ["title" .= title, "items" .= items]
+  toJSON (PushList title items) = object ["type" .= ("list" :: Text), "title" .= title, "items" .= items]
 
 instance FromJSON PushList where
   parseJSON (Object v) = PushList <$>
@@ -94,7 +94,7 @@ data PushLink = PushLink {
 
 
 instance ToJSON PushLink where
-  toJSON (PushLink title body url) = object ["title" .= title, "body" .= body, "url" .= url]
+  toJSON (PushLink title body url) = object ["type" .= ("link" :: Text), "title" .= title, "body" .= body, "url" .= url]
 
 instance FromJSON PushLink where
   parseJSON (Object v) = PushLink <$>
