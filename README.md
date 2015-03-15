@@ -18,7 +18,7 @@ The only way to send a message is with the sendPush function.
 
 ```haskell
 
-sendPush (pushSecret "SomethingReallySecret") undefined $ PushNote "Test" "Some message"
+sendPush (pushSecret "SomethingReallySecret") Nothing $ PushNote "Test" "Some message"
 ```
 
 ## How to run tests
