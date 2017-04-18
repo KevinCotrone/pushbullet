@@ -1,113 +1,67 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Network.Pushbullet.Types(
     Title
   , Body
-  , PushNote(..)
-  , PushList(..)
-  , ListItem(..)
-  , PushLink(..)
-  , PushSecret
-  , pushSecret
+  , FileName
+  , FileType
+  , FileUrl
   , DeviceId(..)
-  , Pushable(..)
   , PushBullet(..)
+  , pushSecret
 ) where
 
 import           Control.Applicative
 import           Control.Monad
 import           Data.Aeson
 import           Data.ByteString
+import           Data.String
 import           Data.Text
 import           Network.Pushbullet.Internal
 import           Network.Wreq
 
-newtype DeviceId = DeviceId { unDeviceId :: Text } deriving (Eq, Show)
--- | A message to send
-newtype PushBullet = PushBullet { unPushable :: Value } deriving (Eq, Show)
-
-
-class Pushable a where
-  toPush :: a -> PushBullet
-
+newtype DeviceId = DeviceId {
+  unDeviceId :: Text
+} deriving (Eq, Show, IsString)
 
 type Title = Text
 type Body = Text
+type FileName = Text
+type FileType = Text
+type FileUrl = Text
 
--- | A note to push to a user
-data PushNote = PushNote {
-  noteTitle :: Title       -- ^ Title of the note
-, noteBody  :: Body        -- ^ Body of the note
-} deriving (Eq, Show)
+data PushBullet =
+    PushNote Title Body
+    -- ^ A note with a title and body
+  | PushLink Title Body Text
+    -- ^ A link with a message and title
+  | PushFile Body FileName FileType FileUrl
+    -- ^ A File with a message, name, type, and url
 
-instance ToJSON PushNote where
-  toJSON (PushNote title body) = object ["type" .= ("note" :: Text), "title" .= title, "body" .= body]
+instance ToJSON PushBullet where
+  toJSON (PushNote title body) =
+    object [
+        "type" .= ("note" :: Text)
+      , "title" .= title, "body" .= body
+    ]
+  toJSON (PushLink title body url) =
+    object [
+        "type" .= ("link" :: Text)
+      , "title" .= title
+      , "body" .= body
+      , "url" .= url
+    ]
+  toJSON (PushFile body fileName fileType fileUrl) =
+    object [
+      "type" .= ("file" :: Text)
+    , "body" .= body
+    , "file_name" .= fileName
+    , "file_type" .= fileType
+    , "file_url" .= fileUrl
+    ]
 
-instance FromJSON PushNote where
-  parseJSON (Object v) = PushNote <$>
-                          v .: "title" <*>
-                          v .: "body"
-  parseJSON _ = mzero
-
-instance Pushable PushNote where
-  toPush = PushBullet . toJSON
-
--- | A list to push to a user
-data PushList = PushList {
-  listTitle :: Title      -- ^ Title of the list
-, listItems :: [ListItem] -- ^ List Items
-} deriving (Eq, Show)
-
-instance ToJSON PushList where
-  toJSON (PushList title items) = object ["type" .= ("list" :: Text), "title" .= title, "items" .= items]
-
-instance FromJSON PushList where
-  parseJSON (Object v) = PushList <$>
-                          v .: "title" <*>
-                          v .: "items"
-  parseJSON _ = mzero
-
-instance Pushable PushList where
-  toPush = PushBullet . toJSON
-
--- | A single item that is part of a list
-data ListItem = ListItem {
-  listItemChecked :: Bool -- ^ If the list item is active
-, listItemText    :: Text -- ^ Text of the list item
-} deriving (Eq, Show)
-
-instance ToJSON ListItem where
-  toJSON (ListItem checked text) = object ["checked" .= checked, "text" .= text]
-
-instance FromJSON ListItem where
-  parseJSON (Object v) = ListItem <$>
-                          v .: "checked" <*>
-                          v .: "text"
-  parseJSON _ = mzero
-
--- | A link to push to a user
-data PushLink = PushLink {
-  linkTitle :: Title      -- ^ Title of the link
-, linkBody  :: Body       -- ^ Message to go along with the link
-, linkUrl   :: Text       -- ^ URL for the link
-} deriving (Eq, Show)
-
-
-instance ToJSON PushLink where
-  toJSON (PushLink title body url) = object ["type" .= ("link" :: Text), "title" .= title, "body" .= body, "url" .= url]
-
-instance FromJSON PushLink where
-  parseJSON (Object v) = PushLink <$>
-                          v .: "title" <*>
-                          v .: "body" <*>
-                          v .: "url"
-  parseJSON _ = mzero
-
-instance Pushable PushLink where
-  toPush = PushBullet . toJSON
-
--- | Used to send push messages
-
+-- | Generate the PushSecret from a ByteString
 pushSecret :: ByteString     -- ^ Access Token found in Account Settings
-              -> PushSecret
+           -> PushSecret
 pushSecret = PushSecret . oauth2Bearer

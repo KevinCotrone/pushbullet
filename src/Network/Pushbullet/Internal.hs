@@ -5,4 +5,6 @@ module Network.Pushbullet.Internal
 
 import           Network.Wreq
 
-newtype PushSecret = PushSecret { unPushSecret :: Auth } deriving (Eq, Show)
+newtype PushSecret = PushSecret {
+  unPushSecret :: Auth
+} deriving (Eq, Show)
